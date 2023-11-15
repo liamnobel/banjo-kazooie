@@ -3,38 +3,49 @@
 #include "variables.h"
 
 
-bool func_802ED420(BKModelUnk20List *arg0, u8 *arg1, u32 arg2) {
-    BKModelUnk20_0 *start_ptr;
+/**
+ * Seems to check if a bounding box is within the camera's view
+ */ 
+bool checkBoundingBoxesPartial(BKModelBBoxList *arg0, u8 *start, u32 count) {
+    BKModelBBox *start_ptr;
 
-    start_ptr = (BKModelUnk20_0 *)(arg0 + 1);
-    while(arg2 != 0){
-        if (start_ptr[*arg1].unkC != 0) {
+    start_ptr = (BKModelBBox *)(arg0 + 1);
+    while(count != 0){
+        if (start_ptr[*start].boundingBoolean != FALSE) {
+            // returns true if any bounding box is true
             return TRUE;
         }
-        arg2--; 
-        arg1++;
+        count--; 
+        start++;
     }
+    // only returns false if all bounding boxes are false
     return FALSE;
 }
 
-void func_802ED52C(BKModelUnk20List *arg0, f32 arg1[3], f32 arg2) {
-    BKModelUnk20_0 *start_ptr;
-    BKModelUnk20_0 *end_ptr;
-    BKModelUnk20_0 *i_ptr;
+/**
+ * Seems to be multiple bounding box checks
+ */
+void checkBoundingBoxes(BKModelBBoxList *bboxData, f32 modelRenderCameraPosition[3], f32 scale) {
+    BKModelBBox *start_ptr;
+    BKModelBBox *end_ptr;
+    BKModelBBox *i_ptr;
     s32 i;
-    s16 sp18[3];
-
-    start_ptr = ( BKModelUnk20_0 *)(arg0 + 1);
-    sp18[0] = (s16) (arg1[0] * (1.0 / arg2));
-    sp18[1] = (s16) (arg1[1] * (1.0 / arg2));
-    sp18[2] = (s16) (arg1[2] * (1.0 / arg2));
-    end_ptr = start_ptr + arg0->unk0;
-    for(i_ptr = start_ptr; i_ptr < end_ptr; i_ptr++){
+    s16 position[3];
+    
+    start_ptr = ( BKModelBBox *)(bboxData + 1);
+    position[0] = modelRenderCameraPosition[0] * (1.0 / scale);
+    position[1] = modelRenderCameraPosition[1] * (1.0 / scale);
+    position[2] = modelRenderCameraPosition[2] * (1.0 / scale);
+    end_ptr = start_ptr + bboxData->numberOfBoxes;
+    for(i_ptr = start_ptr; i_ptr < end_ptr; i_ptr++) {
+        // loop through each axis
         for(i = 0; i < 3; i++){
-            if ((sp18[i] < i_ptr->unk0[i]) || (i_ptr->unk6[i] < sp18[i])) {
+
+            if ((position[i] < i_ptr->lower[i]) || (i_ptr->upper[i] < position[i])) {
                break;
             }
         }
-        i_ptr->unkC = (i == 3);
+        // below sets true when within a bounding box
+        i_ptr->boundingBoolean = (i == 3); // if we break, this will be false
     }
 }

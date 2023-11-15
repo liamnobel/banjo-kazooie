@@ -347,6 +347,7 @@ void func_8033B788(void ){
     D_80370A1C = 1;
 }
 
+// called to fetch an asset and decompress it if necessary
 void *assetcache_get(enum asset_e assetId) {
     s32 comp_size;//sp_44
     s32 i;

@@ -47,10 +47,12 @@ ActorInfo chgrublinInfo = { MARKER_5_GRUBLIN, ACTOR_6_GRUBLIN, ASSET_3C5_MODEL_G
 };
 
 /* .code */
-void func_803889A0(ActorMarker *this, s32 arg1){
+void func_803889A0_grublin_die(ActorMarker *this, s32 arg1){
     Actor *actorPtr;
 
     actorPtr = marker_getActor(this);
+
+    // apears to set the actor's animation to index 5
     func_80328B8C(actorPtr, 5, 0.0f, 1);
     actor_playAnimationOnce(actorPtr);
     FUNC_8030E8B4(SFX_C2_GRUBLIN_EGH, 1.0f, 32000, actorPtr->position, 1250, 2500);
@@ -71,7 +73,7 @@ void func_80388A04(Actor *this){
     local->unk12 = 25000;
     local->unkC_28 = 1;
     local->unk30 = 0;
-    local->unk34 = func_803889A0;
+    local->unk34 = func_803889A0_grublin_die;
     local->unk14 = 1.0f;
 }
 

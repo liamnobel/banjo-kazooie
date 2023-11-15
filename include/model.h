@@ -142,17 +142,17 @@ typedef struct {
 }BKModelUnk14List;
 
 typedef struct{
-    s16 unk0[3];
-    s16 unk6[3];
-    u8 unkC;
+    s16 lower[3];
+    s16 upper[3];
+    u8 boundingBoolean;
     u8 padD[0x1];
-}BKModelUnk20_0;
+}BKModelBBox;
 
 typedef struct{
-    u8 unk0;
+    u8 numberOfBoxes;
     u8 pad1[1];
-    //BKModelUnk20_0[]
-}BKModelUnk20List;
+    //BKModelBBox[]
+}BKModelBBoxList;
 
 typedef struct{
     s16 coord[3];
@@ -192,7 +192,7 @@ typedef struct{
     s32 unk14;
     s32 animation_list_offset_18;
     s32 collision_list_offset_1C;
-    s32 unk20;
+    s32 bbox_list_offset_20; // offset into bounding boxes (NULL or 0 if unused)
     s32 effects_list_setup_24;
     s32 unk28;
     s32 animated_texture_list_offset; //AnimTexture[4]

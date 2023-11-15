@@ -6,8 +6,8 @@
 
 #define ARRAYLEN(x) (sizeof(x) / sizeof((x)[0]))
 
-extern bool func_802ED420(BKModelUnk20List *arg0, u8 *arg1, u32 arg2);
-extern void func_802ED52C(BKModelUnk20List *, f32[3], f32);
+extern bool checkBoundingBoxesPartial(BKModelBBoxList *arg0, u8 *start, u32 count);
+extern void checkBoundingBoxes(BKModelBBoxList *, f32[3], f32);
 extern void func_80252AF0(f32[3], f32[3], f32[3], f32, f32[3]);
 extern void mlMtxRotate(f32, f32, f32);
 extern void viewport_getPosition(f32[3]);
@@ -126,10 +126,10 @@ typedef struct {
 typedef struct {
     s32 cmd_0;
     s32 size_4;
-    s16 unk8;
-    u8  unkA;
-    u8  unkB;
-    u8  unkC[12];
+    s16 offset_8; // offset of next command to call if logic is true
+    u8  size_A; // how many boxes to check
+    u8  flags_B; // logic flags for when to draw, 1 would draw in, 2 would draw out
+    u8  boxIndicesToCheck_C[12]; // an array of up to 12 boxes to check for this command
 }GeoCmdF;
 
 typedef struct {
@@ -155,7 +155,7 @@ void func_80338BFC(Gfx **, Mtx **, void *);
 void func_80338CD0(Gfx **, Mtx **, void *);
 void func_80338DCC(Gfx **, Mtx **, void *);
 void func_80338EB8(Gfx **, Mtx **, void *);
-void func_8033909C(Gfx **, Mtx **, void *);
+void func_8033909C(Gfx **, Mtx **, BKGeoList *);
 void func_80339124(Gfx **, Mtx **, BKGeoList *);
 void func_8033A45C(s32 arg0, s32 arg1);
 
@@ -613,8 +613,8 @@ BKGfxList *            modelRenderDisplayList;
 AnimMtxList *            D_8038371C;
 static BKTextureList * modelRenderTextureList;
 s32                    modelRenderAnimatedTexturesCacheId;
-static BKVertexList *  modelRendervertexList;
-BKModelUnk20List *     D_8038372C;
+static BKVertexList *  modelRenderVertexList;
+BKModelBBoxList *     modelRenderBBoxList;
 AnimMtxList *            modelRenderAnimMtxList;
 f32                    modelRenderScale;
 
@@ -686,8 +686,8 @@ void modelRender_reset(void){
     D_8038371C = NULL;
     modelRenderTextureList = NULL;
     modelRenderAnimatedTexturesCacheId = 0;
-    modelRendervertexList = NULL;
-    D_8038372C = 0;
+    modelRenderVertexList = NULL;
+    modelRenderBBoxList = 0;
     modelRenderCallback.pre_method = NULL;
     modelRenderCallback.post_method = NULL;
     D_803837B0.unk0 = 0;
@@ -989,17 +989,16 @@ void func_80338EB8(Gfx ** gfx, Mtx ** mtx, void *arg2){
 
 }
 
-//cmdF_??? (processes model_setup offset_0x20)
-void func_8033909C(Gfx ** gfx, Mtx ** mtx, void *arg2){
-    GeoCmdF *cmd = (GeoCmdF *)arg2;
-    int tmp_v0 = func_802ED420(D_8038372C, cmd->unkC, cmd->unkA);
-    if( (!tmp_v0 && (cmd->unkB & 1))
-        || (tmp_v0 && (cmd->unkB & 2)) 
-    ){
-        if(cmd->unk8 != 0)
-            func_80339124(gfx, mtx, (BKGeoList*)((s32)cmd + cmd->unk8));
-    }
+//cmdF_BOUNDING_BOX (processes model_setup offset_0x20)
+void func_8033909C(Gfx ** gfx, Mtx ** mtx, BKGeoList *geo_list){
+    GeoCmdF *cmd = (GeoCmdF *)geo_list;
 
+    int inBoundingBox = checkBoundingBoxesPartial(modelRenderBBoxList, cmd->boxIndicesToCheck_C, cmd->size_A);
+    if( (!inBoundingBox && (cmd->flags_B & 1)) || (inBoundingBox && (cmd->flags_B & 2)) ) {
+        if(cmd->offset_8 != 0) {
+            func_80339124(gfx, mtx, (BKGeoList*)((s32)cmd + cmd->offset_8));
+        }
+    }
 }
 
 //render_GeoList
@@ -1084,7 +1083,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     }
 
     if(model_bin){
-        verts = modelRendervertexList ? modelRendervertexList : (BKVertexList *)((s32)model_bin + model_bin->vtx_list_offset_10);
+        verts = modelRenderVertexList ? modelRenderVertexList : (BKVertexList *)((s32)model_bin + model_bin->vtx_list_offset_10);
         spD0 = verts->global_norm;
         spD4 = verts->local_norm;
     }
@@ -1118,8 +1117,8 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     modelRenderModelBin = model_bin;
     modelRenderDisplayList = modelRenderDisplayList ? modelRenderDisplayList : (BKGfxList *)((s32)modelRenderModelBin + modelRenderModelBin->gfx_list_offset_C),
     modelRenderTextureList = modelRenderTextureList ? modelRenderTextureList : (BKTextureList *)((s32)modelRenderModelBin + modelRenderModelBin->texture_list_offset_8),
-    modelRendervertexList = modelRendervertexList ? modelRendervertexList : (BKVertexList *)((s32)modelRenderModelBin + modelRenderModelBin->vtx_list_offset_10),
-    D_8038372C = (modelRenderModelBin->unk20 == NULL) ? NULL : (BKModelUnk20List *)((u8*)model_bin + model_bin->unk20);
+    modelRenderVertexList = modelRenderVertexList ? modelRenderVertexList : (BKVertexList *)((s32)modelRenderModelBin + modelRenderModelBin->vtx_list_offset_10),
+    modelRenderBBoxList = (modelRenderModelBin->bbox_list_offset_20 == NULL) ? NULL : (BKModelBBoxList *)((u8*)model_bin + model_bin->bbox_list_offset_20);
 
     if(D_80383710){
         tmp_f0 = D_80383708 - 500.0f;
@@ -1141,7 +1140,7 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
     }
 
     // Set up segments 1 and 2 to point to vertices and textures respectively
-    gSPSegment((*gfx)++, 0x01, osVirtualToPhysical(&modelRendervertexList->vtx_18));
+    gSPSegment((*gfx)++, 0x01, osVirtualToPhysical(&modelRenderVertexList->vtx_18));
     gSPSegment((*gfx)++, 0x02, osVirtualToPhysical(&modelRenderTextureList->tex_8[modelRenderTextureList->cnt_4]));
 
     //segments 11 to 15 contain animated textures
@@ -1247,12 +1246,14 @@ BKModelBin *modelRender_draw(Gfx **gfx, Mtx **mtx, f32 position[3], f32 rotation
         D_8038371C = modelRenderAnimMtxList;
     }
 
-    if(D_8038372C){
-        func_802ED52C(D_8038372C, modelRenderCameraPosition, scale);
+    // appears to be a check for bounding box
+    // unk20 seems to be the number of boxes to check while it is followed by a list of boxes
+    if(modelRenderBBoxList){
+        checkBoundingBoxes(modelRenderBBoxList, modelRenderCameraPosition, scale);
     }
 
     if(model_bin->unk28 != NULL && D_8038371C != NULL){
-        func_802E6BD0((s32)modelRenderModelBin + modelRenderModelBin->unk28, modelRendervertexList, D_8038371C);
+        func_802E6BD0((s32)modelRenderModelBin + modelRenderModelBin->unk28, modelRenderVertexList, D_8038371C);
     }
 
     mlMtxIdent();
@@ -1366,8 +1367,8 @@ BKVertexList *model_getVtxList(BKModelBin *arg0){
     return (BKVertexList *)((s32)arg0 + arg0->vtx_list_offset_10);
 }
 
-BKModelUnk20List *func_8033A154(BKModelBin *arg0){
-    return (arg0->unk20 == 0) ? NULL : (BKModelUnk20List *)((s32)arg0 + arg0->unk20);
+BKModelBBoxList *model_getBBoxList(BKModelBin *arg0){
+    return (arg0->bbox_list_offset_20 == 0) ? NULL : (BKModelBBoxList *)((s32)arg0 + arg0->bbox_list_offset_20);
 }
 
 s32 func_8033A170(void){
@@ -1516,7 +1517,7 @@ void func_8033A4A0(enum asset_e modelId, f32 arg1, f32 arg2){
 }
 
 void modelRender_setVertexList(BKVertexList *vertexList){
-    modelRendervertexList = vertexList;
+    modelRenderVertexList = vertexList;
 }
 
 void modelRender_setDepthMode(enum model_render_depth_mode_e renderMode){

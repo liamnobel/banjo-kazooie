@@ -21,6 +21,8 @@ f32 D_8027657C = BAD_DTOR;
 /*.bss*/
 Mtx_t D_80282810;
 u8 pad_D_80282850[0x780];
+
+// seems like a shared matrix for transformations?
 Mtx * D_80282FD0;
 
 /*.code*/
@@ -166,6 +168,7 @@ void func_80251878(f32* arg0) {
 #pragma GLOBAL_ASM("asm/nonmatchings/core1/code_13990/func_802519C8.s")
 
 //mlMtx
+// clever way to make a identity matrix
 void mlMtxIdent(void){
     s32 i;
     f32 *v0 = D_80282FD0 = &D_80282810;
